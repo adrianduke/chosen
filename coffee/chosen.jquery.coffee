@@ -332,6 +332,8 @@ class Chosen extends AbstractChosen
     @selected_item.find("abbr").remove()
 
   result_select: (evt) ->
+    # TODO: Prevent adding the same item twice from ajax results, OR send an 
+    # exlude array with ID's (via get request) to remove from restults server side
     if @result_highlight
       high = @result_highlight
       high_id = high.attr "id"
@@ -429,34 +431,37 @@ class Chosen extends AbstractChosen
     regex = new RegExp(regexAnchor + searchText.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"), 'i')
     zregex = new RegExp(searchText.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"), 'i')
 
-    if searchText.length > 1 and @ajax_search
-      $.ajax {
-        url: @ajax_search
-        async: false
-        dataType: 'json'
-        data: {"term": searchText}
-        timeout: 500
-        success: (data) =>
-          items = []
-          for name in data
-            items.push '<option data-is-ajax="1">' + name + '</option>'
+    if @ajax_search
+      if searchText.length > 1
+        # TODO: Make optgroup name definable via jquery option params
+        $.ajax
+          url: @ajax_search
+          async: false
+          dataType: 'json'
+          data: {"term": searchText}
+          timeout: 500
+          success: (data) =>
+            items = []
+            for name in data
+              items.push '<option>' + name + '</option>'
 
-          optgroup = @form_field_jq.children 'optgroup[label="Procedure"]'
+            optgroup = @form_field_jq.children 'optgroup[label="Procedure"]'
 
-          if optgroup.length
-            @ajax_remove_unselected optgroup
-            optgroup.append items.join('')
-          else
-            @form_field_jq.append '<optgroup label="Procedure">' + items.join('') + '</optgroup>'
-          @rebuild_results()
-
-      }
-    else if searchText.length <= 1
-      optgroup = @form_field_jq.children('optgroup[label="Procedure"]')
-      if not @ajax_any_selected optgroup
-        optgroup.remove()
-      else
-        @ajax_remove_unselected optgroup
+            if optgroup.length
+              @ajax_remove_unselected optgroup
+              optgroup.append items.join('')
+            else
+              @form_field_jq.append '<optgroup label="Procedure">' + items.join('') + '</optgroup>'
+              
+      else if searchText.length <= 1
+        optgroup = @form_field_jq.children('optgroup[label="Procedure"]')
+        if not @ajax_any_selected optgroup
+          # Remove the whole optgroup if nothing is selected from it
+          optgroup.remove()
+        else
+          # Only remove non-selected items
+          @ajax_remove_unselected optgroup
+        
       @rebuild_results()
 
     for option in @results_data

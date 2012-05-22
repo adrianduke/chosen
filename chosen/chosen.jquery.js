@@ -45,23 +45,11 @@
     };
 
     SelectParser.prototype.add_option = function(option, group_position, group_disabled) {
-      var is_ajax;
       if (option.nodeName === "OPTION") {
         if (option.text !== "") {
           if (group_position != null) {
             this.parsed[group_position].children += 1;
           }
-          is_ajax = function() {
-            var attribute, _i, _len, _ref;
-            _ref = option.attributes;
-            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-              attribute = _ref[_i];
-              if (attribute.name === "data-is-ajax") {
-                return true;
-              }
-            }
-            return false;
-          };
           this.parsed.push({
             array_index: this.parsed.length,
             options_index: this.options_index,
@@ -69,7 +57,6 @@
             text: option.text,
             html: option.innerHTML,
             selected: option.selected,
-            is_ajax: is_ajax(),
             disabled: group_disabled === true ? group_disabled : option.disabled,
             group_array_index: group_position,
             classes: option.className,
@@ -870,38 +857,39 @@ Copyright (c) 2011 by Harvest
       regexAnchor = this.search_contains ? "" : "^";
       regex = new RegExp(regexAnchor + searchText.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"), 'i');
       zregex = new RegExp(searchText.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"), 'i');
-      if (searchText.length > 1 && this.ajax_search) {
-        $.ajax({
-          url: this.ajax_search,
-          async: false,
-          dataType: 'json',
-          data: {
-            "term": searchText
-          },
-          timeout: 500,
-          success: function(data) {
-            var items, name, optgroup, _i, _len;
-            items = [];
-            for (_i = 0, _len = data.length; _i < _len; _i++) {
-              name = data[_i];
-              items.push('<option data-is-ajax="1">' + name + '</option>');
+      if (this.ajax_search) {
+        if (searchText.length > 1) {
+          $.ajax({
+            url: this.ajax_search,
+            async: false,
+            dataType: 'json',
+            data: {
+              "term": searchText
+            },
+            timeout: 500,
+            success: function(data) {
+              var items, name, optgroup, _i, _len;
+              items = [];
+              for (_i = 0, _len = data.length; _i < _len; _i++) {
+                name = data[_i];
+                items.push('<option>' + name + '</option>');
+              }
+              optgroup = _this.form_field_jq.children('optgroup[label="Procedure"]');
+              if (optgroup.length) {
+                _this.ajax_remove_unselected(optgroup);
+                return optgroup.append(items.join(''));
+              } else {
+                return _this.form_field_jq.append('<optgroup label="Procedure">' + items.join('') + '</optgroup>');
+              }
             }
-            optgroup = _this.form_field_jq.children('optgroup[label="Procedure"]');
-            if (optgroup.length) {
-              _this.ajax_remove_unselected(optgroup);
-              optgroup.append(items.join(''));
-            } else {
-              _this.form_field_jq.append('<optgroup label="Procedure">' + items.join('') + '</optgroup>');
-            }
-            return _this.rebuild_results();
+          });
+        } else if (searchText.length <= 1) {
+          optgroup = this.form_field_jq.children('optgroup[label="Procedure"]');
+          if (!this.ajax_any_selected(optgroup)) {
+            optgroup.remove();
+          } else {
+            this.ajax_remove_unselected(optgroup);
           }
-        });
-      } else if (searchText.length <= 1) {
-        optgroup = this.form_field_jq.children('optgroup[label="Procedure"]');
-        if (!this.ajax_any_selected(optgroup)) {
-          optgroup.remove();
-        } else {
-          this.ajax_remove_unselected(optgroup);
         }
         this.rebuild_results();
       }

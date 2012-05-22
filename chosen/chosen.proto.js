@@ -45,23 +45,11 @@
     };
 
     SelectParser.prototype.add_option = function(option, group_position, group_disabled) {
-      var is_ajax;
       if (option.nodeName === "OPTION") {
         if (option.text !== "") {
           if (group_position != null) {
             this.parsed[group_position].children += 1;
           }
-          is_ajax = function() {
-            var attribute, _i, _len, _ref;
-            _ref = option.attributes;
-            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-              attribute = _ref[_i];
-              if (attribute.name === "data-is-ajax") {
-                return true;
-              }
-            }
-            return false;
-          };
           this.parsed.push({
             array_index: this.parsed.length,
             options_index: this.options_index,
@@ -69,7 +57,6 @@
             text: option.text,
             html: option.innerHTML,
             selected: option.selected,
-            is_ajax: is_ajax(),
             disabled: group_disabled === true ? group_disabled : option.disabled,
             group_array_index: group_position,
             classes: option.className,
