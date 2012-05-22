@@ -375,6 +375,7 @@ class Chosen extends AbstractChosen
   result_deselect: (pos) ->
     result_data = @results_data[pos]
     result_data.selected = false
+    deselected_value = @form_field.options[result_data.options_index].value
 
     @form_field.options[result_data.options_index].selected = false
     result = $("#" + @container_id + "_o_" + pos)
@@ -383,11 +384,40 @@ class Chosen extends AbstractChosen
     this.result_clear_highlight()
     this.winnow_results()
 
-    @form_field_jq.trigger "change", {deselected: @form_field.options[result_data.options_index].value}
+    @form_field_jq.trigger "change", {deselected: deselected_value}
     this.search_field_scale()
 
   single_deselect_control_build: ->
     @selected_item.find("span").first().after "<abbr class=\"search-choice-close\"></abbr>" if @allow_single_deselect and @selected_item.find("abbr").length < 1
+
+  rebuild_results: ->
+    @parsing = true
+    @results_data = root.SelectParser.select_to_array @form_field
+
+    content = ''
+    for data in @results_data
+      if data.group
+        content += this.result_add_group data
+      else if !data.empty
+        content += this.result_add_option data
+        if data.selected and not @is_multiple
+          @selected_item.removeClass("chzn-default").find("span").text data.text
+          this.single_deselect_control_build() if @allow_single_deselect
+
+    @search_results.html content
+    @parsing = false
+
+  ajax_remove_unselected: (jq_dom_element) ->
+    jq_dom_element.children().each ->
+      if typeof $(@).attr('selected') is 'undefined'
+        $(@).remove()
+
+  ajax_any_selected: (jq_dom_element) ->
+    any_selected = false
+    jq_dom_element.children().each ->
+      if $(@).attr('selected') is 'selected'
+        any_selected = true
+    return any_selected
 
   winnow_results: ->
     this.no_results_clear()
@@ -398,6 +428,36 @@ class Chosen extends AbstractChosen
     regexAnchor = if @search_contains then "" else "^"
     regex = new RegExp(regexAnchor + searchText.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"), 'i')
     zregex = new RegExp(searchText.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"), 'i')
+
+    if searchText.length > 1 and @ajax_search
+      $.ajax {
+        url: @ajax_search
+        async: false
+        dataType: 'json'
+        data: {"term": searchText}
+        timeout: 500
+        success: (data) =>
+          items = []
+          for name in data
+            items.push '<option data-is-ajax="1">' + name + '</option>'
+
+          optgroup = @form_field_jq.children 'optgroup[label="Procedure"]'
+
+          if optgroup.length
+            @ajax_remove_unselected optgroup
+            optgroup.append items.join('')
+          else
+            @form_field_jq.append '<optgroup label="Procedure">' + items.join('') + '</optgroup>'
+          @rebuild_results()
+
+      }
+    else if searchText.length <= 1
+      optgroup = @form_field_jq.children('optgroup[label="Procedure"]')
+      if not @ajax_any_selected optgroup
+        optgroup.remove()
+      else
+        @ajax_remove_unselected optgroup
+      @rebuild_results()
 
     for option in @results_data
       if not option.disabled and not option.empty

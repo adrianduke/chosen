@@ -25,6 +25,13 @@ class SelectParser
       if option.text != ""
         if group_position?
           @parsed[group_position].children += 1
+
+        is_ajax = ->
+          for attribute in option.attributes
+            if attribute.name is "data-is-ajax"
+              return true
+          return false
+
         @parsed.push
           array_index: @parsed.length
           options_index: @options_index
@@ -32,6 +39,7 @@ class SelectParser
           text: option.text
           html: option.innerHTML
           selected: option.selected
+          is_ajax: is_ajax()
           disabled: if group_disabled is true then group_disabled else option.disabled
           group_array_index: group_position
           classes: option.className

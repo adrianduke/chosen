@@ -32,6 +32,7 @@ class AbstractChosen
     @search_contains = @options.search_contains || false
     @choices = 0
     @max_selected_options = @options.max_selected_options || Infinity
+    @ajax_search = @options.ajax_search || false
 
   set_default_text: ->
     if @form_field.getAttribute("data-placeholder")
